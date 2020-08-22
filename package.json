@@ -6,7 +6,7 @@
     "node": ">= 12.13 <13"
   },
   "bin": {
-    "cbp-bot": "./build/src/main.js"
+    "cbp-bot": "./build/main.js"
   },
   "devDependencies": {
     "@types/jest": "~26.0.5",
@@ -34,6 +34,7 @@
   "author": "Jakub Synowiec <github@jakubsynowiec.info>",
   "license": "Apache-2.0",
   "dependencies": {
+    "coinbase-pro-node": "^2.8.1",
     "dotenv": "^8.2.0",
     "inquirer": "^7.3.3",
     "node-emoji": "^1.10.0",

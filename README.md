@@ -5,15 +5,14 @@ Trade tokens on Coinbase using sentiment analysis of Twitter!
 
 ## Getting Started
 
-### The Repo
+1. `npm i`
+2. `cp .env.example .env`
+3. Get a [Coinbase Pro Key](https://docs.pro.coinbase.com/#authentication)
+4. `npm run build` - build the code
+5. `npm link` - link the node script
+6. `cbp-bot` - run it
 
-To clone the repository use the following commands:
-
-```sh
-git clone https://github.com/manymikes/cbp-twitter-bot
-cd cbp-twitter-bot
-npm i
-```
+## Development
 
 ### Available Scripts
 
@@ -24,13 +23,15 @@ npm i
 + `test` - run tests,
 + `test:watch` - interactive watch mode to automatically re-run tests
 
-### Running the Bot
+### Services
 
-+ `npm run build` - build the code
-+ `npm link` - link the node script
-+ `cbp-bot` - run it
++ coinbase: built on [coinbase-pro-node](https://github.com/bennyn/coinbase-pro-node)
 
-## Dependencies
+### Commands
+
++ listAccounts
+
+### Dependencies
 
 + [TypeScript][typescript] [3.9][typescript-39]
 + [ESLint][eslint] with some initial rules recommendation
@@ -43,7 +44,7 @@ npm i
 + Reproducible environments thanks to [Volta][volta]
 + Example configuration for [Travis CI][travis]
 
-## Volta?
+### Volta?
 
 [Volta][volta]’s toolchain always keeps track of where you are, it makes sure the tools you use always respect the settings of the project you’re working on. This means you don’t have to worry about changing the state of your installed software when switching between projects. Pretty neat stuff.
 
