@@ -1,9 +1,12 @@
 {
-  "name": "node-typescript-boilerplate",
-  "version": "0.0.0",
-  "description": "Minimalistic boilerplate to quick-start Node.js development in TypeScript.",
+  "name": "cbp-twitter-bot",
+  "version": "0.0.1",
+  "description": "Coinbase Pro trading bot using Twitter sentiment analysis.",
   "engines": {
     "node": ">= 12.13 <13"
+  },
+  "bin": {
+    "cbp-bot": "./build/src/main.js"
   },
   "devDependencies": {
     "@types/jest": "~26.0.5",
@@ -18,7 +21,7 @@
     "rimraf": "~3.0.2",
     "ts-jest": "~26.1.3",
     "tsutils": "~3.17.0",
-    "typescript": "~3.9.7"
+    "typescript": "^3.9.7"
   },
   "scripts": {
     "clean": "rimraf coverage build tmp",
@@ -31,6 +34,9 @@
   "author": "Jakub Synowiec <github@jakubsynowiec.info>",
   "license": "Apache-2.0",
   "dependencies": {
+    "dotenv": "^8.2.0",
+    "inquirer": "^7.3.3",
+    "node-emoji": "^1.10.0",
     "tslib": "~2.0.0"
   },
   "volta": {

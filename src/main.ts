@@ -1,32 +1,25 @@
-/**
- * Some predefined delays (in milliseconds).
- */
-export enum Delays {
-  Short = 500,
-  Medium = 2000,
-  Long = 5000,
-}
+#!/usr/bin/env node
+import * as yargs from 'yargs'
+import { logInfo } from './utils/log'
+import './utils/env'
 
-/**
- * Returns a Promise<string> that resolves after given time.
- *
- * @param {string} name - A name.
- * @param {number=} [delay=Delays.Medium] - Number of milliseconds to delay resolution of the Promise.
- * @returns {Promise<string>}
- */
-function delayedHello(
-  name: string,
-  delay: number = Delays.Medium,
-): Promise<string> {
-  return new Promise((resolve: (value?: string) => void) =>
-    setTimeout(() => resolve(`Hello, ${name}`), delay),
-  );
-}
+const ENV = process.env.ENVIRONMENT || 'DEV'
 
-// Below are examples of using ESLint errors suppression
-// Here it is suppressing missing return type definitions for greeter function
+// CLI interface
+// ---------------------------
+logInfo('')
+logInfo('###################################')
+logInfo(`#       :moneybag: :money_with_wings: CBP Bot :money_with_wings: :moneybag:       #`)
+logInfo('#      --------------------       #')
+logInfo(`#        Environment: ${ENV}         #`)
+logInfo('###################################')
+logInfo('')
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function greeter(name: string) {
-  return await delayedHello(name, Delays.Long);
-}
+// prettier-ignore
+yargs
+  .scriptName('cbp-bot')
+  .commandDir('commands')
+  .demandCommand(1)
+  .help()
+  .version()
+  .argv;
