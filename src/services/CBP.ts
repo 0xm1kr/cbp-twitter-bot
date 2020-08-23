@@ -9,9 +9,16 @@ import {
     WebSocketChannel,
     WebSocketResponseType,
     OrderBookLevel2,
-    OrderBookLevel
+    OrderBookLevel,
+    LimitOrder,
+    MarketOrder,
+    Order,
+    OrderType,
+    FeeUtil,
+    FeeEstimate,
+    CandleGranularity
 } from 'coinbase-pro-node'
-import { logInfo } from '../utils/log'
+import { logInfo, logDetail, logError } from '../utils/log'
 import * as chalk from 'chalk'
 
 //
@@ -31,6 +38,7 @@ import * as chalk from 'chalk'
 export type CBPParams = {
     action: string
     product?: string
+    param?: string
 }
 
 export type BookSnapshot = {
@@ -63,10 +71,84 @@ export type CBPServiceParams = {
 export class CBPService {
 
     protected client!: CoinbasePro
-    protected connection: boolean
+    protected connected: boolean
 
     constructor(params: CBPServiceParams) {
         this.client = new CoinbasePro(params.auth)
+    }
+
+    /**
+     * place a limit order
+     * 
+     * @param productId 
+     * @param params {
+     *  amount: amount in quote (e.g. USD)
+     *  side: buy or sell
+     * }
+     */
+    public async limitOrder(productId: string, params: {
+        size: string
+        side: OrderSide
+        price: string
+        stop?: 'loss' | 'entry'
+        stopPrice?: string
+    }): Promise<Order> {
+        const o: LimitOrder = {
+            type: OrderType.LIMIT,
+            product_id: productId,
+            side: params.side,
+            size: params.size,
+            price: params.price
+        }
+
+        // stop order
+        if (params.stop) {
+            o.stop = params.stop
+            if (!params.stopPrice) throw new Error(`stopPrice is required for a stop ${params.stop} order`)
+            o.stop_price = params.stopPrice
+        }
+
+        return this.client.rest.order.placeOrder(o)
+    }
+
+    /**
+     * place a market order
+     * 
+     * @param productId 
+     * @param params {
+     *  amount: amount in quote (e.g. USD)
+     *  side: buy or sell
+     * }
+     */
+    public async marketOrder(productId: string, params: {
+        amount: string
+        side: OrderSide
+    }): Promise<Order> {
+        const o: MarketOrder = {
+            type: OrderType.MARKET,
+            product_id: productId,
+            side: params.side,
+            funds: params.amount
+        }
+        return this.client.rest.order.placeOrder(o)
+    }
+
+    /**
+     * estimate an order fee
+     * 
+     * @param product 
+     * @param params 
+     */
+    public async getFeeEstimate(product: string, params: {
+        size: string
+        price: string|number
+        side: OrderSide
+        type: OrderType
+    }): Promise<FeeEstimate> {
+        const pair = product.split('-')
+        const quote = pair[1]
+        const feeTier = await this.client.rest.fee.getCurrentFees()
+        return FeeUtil.estimateFee(params.size, params.price, params.side, params.type, feeTier, quote)
     }
 
     /**
@@ -79,7 +161,7 @@ export class CBPService {
     /**
      * getBook
      * 
-     * @param product_id 
+     * @param productId 
      */
     public async getBook(productId = 'BTC-USD'): Promise<OrderBookLevel2> {
         return this.client.rest.product.getProductOrderBook(productId, {
@@ -102,7 +184,13 @@ export class CBPService {
     ): void  {
         // on open, subscribe
         this.client.ws.on(WebSocketEvent.ON_OPEN, () => {
+            this.connected = true
             this.client.ws.subscribe(channels)
+        })
+
+        // on close
+        this.client.ws.on(WebSocketEvent.ON_CLOSE, () => {
+            this.connected = false
         })
 
         // changes to subscriptions
@@ -129,7 +217,7 @@ export class CBPService {
         })
     }
 
-    // ----- intended for CLI output ----- //
+    // -------- CLI Methods -------- //
 
     /**
      * list available accounts
@@ -144,29 +232,81 @@ export class CBPService {
     }
 
     /**
+     * estimate a products fees
+     * 
+     * @param productId 
+     * @param size 
+     * @param price 
+     * @param side 
+     */
+    public async estimateFee(productId: string, size = '1', side = 'buy'): Promise<void> {
+        const pair =  productId.split('-')
+        const base = pair[0]
+        const quote = pair[1]
+
+        // get current price
+        const candles = await this.client.rest.product.getCandles(productId, {
+            granularity: CandleGranularity.ONE_HOUR,
+        })
+        const lastPrice = candles[candles.length - 1].close
+
+        // get fee
+        const fee = await this.getFeeEstimate(productId, {
+            size, 
+            price: lastPrice, 
+            side: (side as OrderSide), 
+            type: OrderType.MARKET
+        })
+
+        logInfo(chalk.white(`Buying "${size} ${base}" would cost around ${fee.effectiveTotal} ${quote} with a fee of ${chalk.red(`${fee.totalFee} ${quote}`)}.`))
+        logInfo('')
+    }
+
+    /**
      * view book
      * 
-     * @param product
+     * @param productId
      */
-    public async viewBook(product = 'BTC-USD'): Promise<void> {
-        const book = await this.getBook(product)
-        logInfo(`${chalk.white(`${product} Order Book:`)}\n-------------------\n${JSON.stringify(book, null, 2)}`)
+    public async viewBook(productId = 'BTC-USD'): Promise<void> {
+        const book = await this.getBook(productId)
+        logInfo(`${chalk.white(`${productId} Order Book:`)}\n-------------------\n${JSON.stringify(book, null, 2)}`)
         logInfo('')
+    }
+
+    /**
+     * buy some crypto
+     * 
+     * @param productId 
+     * @param amount
+     */
+    public async purchase(productId = 'BTC-USD', amount: string): Promise<void> {
+        try {
+            const result = await this.marketOrder(productId, {
+                amount, side: OrderSide.BUY
+            })
+            logInfo(`${chalk.green(`Purchased ${amount} ${productId}:`)}\n---------------------`)
+            logDetail(JSON.stringify(result, null, 2))
+            logInfo('')
+        } catch (err) {
+            logError(`${chalk.red(`Purchase of ${amount} ${productId} failed!`)}\n---------------------------------`)
+            logDetail(JSON.stringify(err.response?.data, null, 2))
+            logInfo('')
+        }
     }
 
     /**
      * watch ticker
      * 
-     * @param product
+     * @param productId
      */
-    public async watchTicker(product = 'BTC-USD'): Promise<void> {
+    public async watchTicker(productId = 'BTC-USD'): Promise<void> {
         this.subscribe([{
             name: WebSocketChannelName.TICKER,
-            product_ids: [product],
+            product_ids: [productId],
         }], {
             ticker(message) {
                 const color = message.side === OrderSide.BUY ? chalk.green : chalk.red
-                logInfo(color(`${product}: ${message.side} ${message.last_size} @ ${message.price}`))
+                logInfo(color(`${productId}: ${message.side} ${message.last_size} @ ${message.price}`))
                 logInfo('')
             }
         })
@@ -175,12 +315,12 @@ export class CBPService {
     /**
      * watch book
      * 
-     * @param product
+     * @param productId
      */
-    public async watchBook(product = 'BTC-USD'): Promise<void> {
+    public async watchBook(productId = 'BTC-USD'): Promise<void> {
         this.subscribe([{
             name: WebSocketChannelName.LEVEL2,
-            product_ids: [product],
+            product_ids: [productId],
         }], {
             message(message) {
                 if (message.type === WebSocketResponseType.LEVEL2_SNAPSHOT) {

@@ -1,5 +1,5 @@
-import { logInfo } from '../utils/log'
 import { prompt as ask } from 'inquirer'
+import { logInfo } from '../utils/log'
 
 //
 // The hello service is a nice

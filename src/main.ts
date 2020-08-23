@@ -22,4 +22,4 @@ yargs
   .demandCommand(1)
   .help()
   .version()
-  .argv;
+  .argv

@@ -6,7 +6,7 @@ import * as yargs from 'yargs' // eslint-disable-line no-unused-vars
 /**
  * The Hello CLI command name
  */
-export const command = [ 'cbp <action> [product]' ]
+export const command = [ 'cbp <action> [product] [param]' ]
 
 /**
  * The Hello CLI command description
@@ -17,16 +17,16 @@ export const desc = `Coinbase Pro related commands`
  * CBP Command Builder
  */
 export const builder: { [key: string]: yargs.Options } = {
-    action: { type: 'string', required: true, description: 'CBP action: <viewBalances, viewBook, watchTicker, watchBook>' },
-    product: { type: 'string', required: false, description: 'Pass in a product for this action' }
+    action: { type: 'string', required: true, description: 'Actions: viewBalances, viewBook, watchTicker, watchBook, estimateFee, purchase' },
+    product: { type: 'string', required: false, description: 'A product for this action e.g. BTC-USD' },
+    param: { type: 'string', required: false, description: 'Additional parameter for this action' },
 }
 
 /**
  * CBP Command Handler
- * @param param0 
+ * @param params 
  */
-export async function handler({ action, product }: CBPParams): Promise<void> {
-
+export async function handler({ action, product, param }: CBPParams): Promise<void> {
     // get some env vars
     const {
         CBP_KEY,
@@ -40,15 +40,15 @@ export async function handler({ action, product }: CBPParams): Promise<void> {
             apiKey: CBP_KEY,
             apiSecret: CBP_SECRET,
             passphrase: CBP_PASSPHRASE,
-            useSandbox: false
+            useSandbox: true
         }
     })
 
     try {
-        await cbpService[action](product)
+        await cbpService[action](product, param)
     } catch (error) {
         logError(`:x: action failed! ${action}`)
-        logDetail(error.message)
+        logDetail(error.stack)
         log('')
     }
     
