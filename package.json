@@ -31,7 +31,7 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch"
   },
-  "author": "Jakub Synowiec <github@jakubsynowiec.info>",
+  "author": "Mike Roth <mike@manyuses.com>",
   "license": "Apache-2.0",
   "dependencies": {
     "coinbase-pro-node": "^2.8.1",

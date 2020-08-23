@@ -1,4 +1,5 @@
-import { Delays, greeter } from '../src/main';
+import { greeter } from '../src/hello'
+import { HelloDelays } from '../src/services/hello'
 
 describe('greeter function', () => {
   // Read more about fake timers
@@ -20,7 +21,7 @@ describe('greeter function', () => {
     expect(setTimeout).toHaveBeenCalledTimes(1);
     expect(setTimeout).toHaveBeenLastCalledWith(
       expect.any(Function),
-      Delays.Long,
+      HelloDelays.Long,
     );
   });
 

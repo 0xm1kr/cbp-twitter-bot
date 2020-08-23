@@ -1,9 +1,11 @@
 import { logInfo } from '../utils/log'
 import { prompt as ask } from 'inquirer'
 
+//
 // The hello service is a nice
 // singleton for all things
 // related to saying hello.
+//
 
 /**
  * Some predefined delays (in milliseconds).
