@@ -4,17 +4,17 @@ import { CBPService, CBPParams } from '../services/CBP'
 import * as yargs from 'yargs' // eslint-disable-line no-unused-vars
 
 /**
- * The Hello CLI command name
+ * The command name
  */
 export const command = [ 'cbp <action> [product] [param]' ]
 
 /**
- * The Hello CLI command description
+ * The command description
  */
 export const desc = `Coinbase Pro related commands`
 
 /**
- * CBP Command Builder
+ * Command builder
  */
 export const builder: { [key: string]: yargs.Options } = {
     action: { type: 'string', required: true, description: 'Actions: viewBalances, viewBook, watchTicker, watchBook, estimateFee, purchase' },
@@ -23,7 +23,8 @@ export const builder: { [key: string]: yargs.Options } = {
 }
 
 /**
- * CBP Command Handler
+ * Command handler
+ * 
  * @param params 
  */
 export async function handler({ action, product, param }: CBPParams): Promise<void> {

@@ -213,7 +213,7 @@ export class CBPService {
 
         // connect to WebSocket
         this.client.ws.connect({ 
-            // debug: true 
+            // debug: true
         })
     }
 
