@@ -29,7 +29,10 @@ Trade tokens on Coinbase using sentiment analysis of Twitter!
 
 ### Commands
 
-+ listAccounts
++ `viewBalances`: shows current balances
++ `viewBook [product]`: view a snapshot of a product book (e.g. "BTC-USD")
++ `watchTicker [product]`: watch a product ticker
++ `watchBook [product]`: watch a product book
 
 ### Dependencies
 
