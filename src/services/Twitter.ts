@@ -4,8 +4,7 @@ import * as chalk from 'chalk'
 import { logInfo, logDetail } from '../utils/log'
 
 export type TwitterParams = {
-    action: string
-    param?: string
+    keyword: string
 }
 
 export type TwitterServiceParams = {
@@ -45,7 +44,7 @@ export class TwitterService {
      * @param track 
      */
     public async stream(track: string, handler: (event: any) => void): Promise<void> {
-        await new Promise((res) => {
+        new Promise((res) => {
             const stream = this.client.stream('statuses/filter', { track })
             stream.on('data', handler)
             stream.on('error', (error) => {
@@ -61,8 +60,8 @@ export class TwitterService {
      * 
      * @param track 
      */
-    public async streamSentiment(track: string): Promise<void> {
-        await this.stream(track, (event) => {
+    public async watchSentiment(track: string): Promise<void> {
+        return this.stream(track, (event) => {
             const sentiment = this.getSentiment(event.text) * event.user.followers_count
             const color = sentiment >= 0 ? chalk.green : chalk.red
             logInfo(color(`@${event.user.name}, sentiment ${sentiment}:`))

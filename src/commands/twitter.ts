@@ -6,7 +6,7 @@ import { TwitterService, TwitterParams } from '../services/Twitter'
 /**
  * The command name
  */
-export const command = [ 'twitter <action> [param]' ]
+export const command = 'twitter [keyword]'
 
 /**
  * The command description
@@ -17,16 +17,15 @@ export const desc = `Twitter related commands`
  * Command builder
  */
 export const builder: { [key: string]: yargs.Options } = {
-    action: { type: 'string', required: true, description: 'Actions: stream' },
-    param: { type: 'string', required: false, description: 'Additional parameter for this action' },
+    keyword: { type: 'string', required: true, description: 'Keyword to watch' },
 }
 
 /**
  * Command handler
  * @param params 
  */
-export async function handler({ action, param }: TwitterParams): Promise<void> {
-    // get some env vars
+export async function handler({ keyword }: TwitterParams): Promise<void> {
+    // get env vars
     const {
         TWITTER_KEY,
         TWITTER_SECRET,
@@ -45,9 +44,9 @@ export async function handler({ action, param }: TwitterParams): Promise<void> {
     })
 
     try {
-        await twitterService[action](param)
+        await twitterService.watchSentiment(keyword)
     } catch (error) {
-        logError(`:x: action failed! ${action}`)
+        logError(`:x: watchSentiment failed! ${keyword}`)
         logDetail(error.stack)
         log('')
     }

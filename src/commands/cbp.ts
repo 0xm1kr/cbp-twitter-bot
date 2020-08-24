@@ -6,7 +6,7 @@ import * as yargs from 'yargs' // eslint-disable-line no-unused-vars
 /**
  * The command name
  */
-export const command = [ 'cbp <action> [product] [param]' ]
+export const command = 'cbp [action] [product] [param]'
 
 /**
  * The command description
@@ -17,7 +17,7 @@ export const desc = `Coinbase Pro related commands`
  * Command builder
  */
 export const builder: { [key: string]: yargs.Options } = {
-    action: { type: 'string', required: true, description: 'Actions: viewBalances, viewBook, watchTicker, watchBook, estimateFee, purchase' },
+    action: { type: 'string', required: true, description: 'viewBalances, viewBook, watchTicker, watchBook, estimateFee, purchase' },
     product: { type: 'string', required: false, description: 'A product for this action e.g. BTC-USD' },
     param: { type: 'string', required: false, description: 'Additional parameter for this action' },
 }
@@ -28,11 +28,12 @@ export const builder: { [key: string]: yargs.Options } = {
  * @param params 
  */
 export async function handler({ action, product, param }: CBPParams): Promise<void> {
-    // get some env vars
+    // get env vars
     const {
         CBP_KEY,
         CBP_SECRET,
-        CBP_PASSPHRASE
+        CBP_PASSPHRASE,
+        ENVIRONMENT
     } = process.env
     
     // init service
@@ -41,7 +42,7 @@ export async function handler({ action, product, param }: CBPParams): Promise<vo
             apiKey: CBP_KEY,
             apiSecret: CBP_SECRET,
             passphrase: CBP_PASSPHRASE,
-            useSandbox: true
+            useSandbox: (ENVIRONMENT === 'DEV') ? true : false
         }
     })
 
