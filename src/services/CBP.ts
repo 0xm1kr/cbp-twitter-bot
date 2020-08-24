@@ -1,8 +1,8 @@
-import { 
-    CoinbasePro, 
+import {
+    CoinbasePro,
     Account,
-    WebSocketEvent, 
-    WebSocketChannelName, 
+    WebSocketEvent,
+    WebSocketChannelName,
     OrderSide,
     WebSocketResponse,
     WebSocketTickerMessage,
@@ -18,8 +18,12 @@ import {
     FeeEstimate,
     CandleGranularity
 } from 'coinbase-pro-node'
-import { logInfo, logDetail, logError } from '../utils/log'
+import { RBTree } from 'bintrees'
+import ReconnectingWebSocket from 'reconnecting-websocket'
+import bn from 'big.js'
 import * as chalk from 'chalk'
+
+import { logInfo, logDetail, logError } from '../utils/log'
 
 //
 // The CBPService handles  
@@ -58,7 +62,7 @@ export type BookUpdate = {
 }
 
 export type CBPServiceParams = {
-    
+
     auth: {
         apiKey: string
         apiSecret: string
@@ -71,10 +75,21 @@ export type CBPServiceParams = {
 export class CBPService {
 
     protected client!: CoinbasePro
-    protected connected: boolean
+    protected connection: ReconnectingWebSocket
+    protected channels: WebSocketChannel[] = []
+
+    public bids: RBTree<string[]>
+    public asks: RBTree<string[]>
 
     constructor(params: CBPServiceParams) {
         this.client = new CoinbasePro(params.auth)
+
+        this.bids = new RBTree(
+            (a, b) => (bn(a[0]).gt(bn(b[0])) ? 1 : (bn(a[0]).eq(bn(b[0])) ? 0 : -1))
+        )
+        this.asks = new RBTree(
+            (a, b) => (bn(a[0]).gt(bn(b[0])) ? 1 : (bn(a[0]).eq(bn(b[0])) ? 0 : -1))
+        )
     }
 
     /**
@@ -141,7 +156,7 @@ export class CBPService {
      */
     public async getFeeEstimate(product: string, params: {
         size: string
-        price: string|number
+        price: string | number
         side: OrderSide
         type: OrderType
     }): Promise<FeeEstimate> {
@@ -181,25 +196,7 @@ export class CBPService {
             message?: (message: WebSocketResponse) => unknown,
             ticker?: (message: WebSocketTickerMessage) => unknown
         }
-    ): void  {
-        // on open, subscribe
-        this.client.ws.on(WebSocketEvent.ON_OPEN, () => {
-            this.connected = true
-            this.client.ws.subscribe(channels)
-        })
-
-        // on close
-        this.client.ws.on(WebSocketEvent.ON_CLOSE, () => {
-            this.connected = false
-        })
-
-        // changes to subscriptions
-        this.client.ws.on(WebSocketEvent.ON_SUBSCRIPTION_UPDATE, subscriptions => {
-            // disconnect if no more subscriptions?
-            if (subscriptions.channels.length === 0) {
-                this.client.ws.disconnect()
-            }
-        })
+    ): void {
 
         // message handler
         if (handlers.message) {
@@ -211,9 +208,91 @@ export class CBPService {
             this.client.ws.on(WebSocketEvent.ON_MESSAGE_TICKER, handlers.ticker)
         }
 
-        // connect to WebSocket
-        this.client.ws.connect({ 
-            // debug: true
+        // connection already open
+        if (this.connection?.OPEN) {
+
+            // subscribe
+            this.channels = [
+                ...channels,
+                ...this.channels
+            ]
+            this.client.ws.subscribe(this.channels)
+
+        } else {
+            // on open, subscribe
+            this.client.ws.on(WebSocketEvent.ON_OPEN, () => {
+                this.client.ws.subscribe(channels)
+            })
+
+            // changes to subscriptions
+            this.client.ws.on(WebSocketEvent.ON_SUBSCRIPTION_UPDATE, subscriptions => {
+                // disconnect if no more subscriptions?
+                if (subscriptions.channels.length === 0) {
+                    this.client.ws.disconnect()
+                }
+            })
+
+            // open connection
+            this.connection = this.client.ws.connect({
+                // debug: true
+            })
+        }
+    }
+
+    /**
+     * Synchronize a product orderbook
+     * TODO multiple products?
+     * 
+     * @param productId 
+     */
+    public syncBook(productId: string): void {
+        // watch the book
+        this.subscribe([{
+            name: WebSocketChannelName.LEVEL2,
+            product_ids: [productId],
+        }], {
+            message: (message) => {
+                // handle snapshot
+                if (message.type === WebSocketResponseType.LEVEL2_SNAPSHOT) {
+                    for (let b = 0; b < (message as any).bids.length; b++) {
+                        this.bids.insert((message as any).bids[b])
+                    }
+                    for (let a = 0; a < (message as any).asks.length; a++) {
+                        this.asks.insert((message as any).asks[a])
+                    }
+                }
+
+                // handle update
+                if (message.type === WebSocketResponseType.LEVEL2_UPDATE) {
+                    for (let c = 0; c < (message as any).changes.length; c++) {
+                        const change = (message as any).changes[c]
+                        if (change[0] === 'buy') {
+                            const bid = this.bids.find([change[1], change[2]])
+                            if (bid) {
+                                if (bn(change[2]).eq(0)) {
+                                    this.bids.remove([change[1], change[2]])
+                                } else {
+                                    this.bids.insert([change[1], change[2]])
+                                }
+                            } else {
+                                this.bids.insert([change[1], change[2]])
+                            }
+                        }
+                        if (change[0] === 'sell') {
+                            const ask = this.asks.find([change[1], change[2]])
+                            if (ask) {
+                                if (bn(change[2]).eq(0)) {
+                                    this.asks.remove([change[1], change[2]])
+                                } else {
+                                    this.asks.insert([change[1], change[2]])
+                                }
+                            } else {
+                                this.asks.insert([change[1], change[2]])
+                            }
+                        }
+                    }
+                }
+            }
         })
     }
 
@@ -240,7 +319,7 @@ export class CBPService {
      * @param side 
      */
     public async estimateFee(productId: string, size = '1', side = 'buy'): Promise<void> {
-        const pair =  productId.split('-')
+        const pair = productId.split('-')
         const base = pair[0]
         const quote = pair[1]
 
@@ -252,9 +331,9 @@ export class CBPService {
 
         // get fee
         const fee = await this.getFeeEstimate(productId, {
-            size, 
-            price: lastPrice, 
-            side: (side as OrderSide), 
+            size,
+            price: lastPrice,
+            side: (side as OrderSide),
             type: OrderType.MARKET
         })
 
@@ -318,20 +397,14 @@ export class CBPService {
      * @param productId
      */
     public async watchBook(productId = 'BTC-USD'): Promise<void> {
-        this.subscribe([{
-            name: WebSocketChannelName.LEVEL2,
-            product_ids: [productId],
-        }], {
-            message(message) {
-                if (message.type === WebSocketResponseType.LEVEL2_SNAPSHOT) {
-                    logInfo(JSON.stringify(message, null, 2))
-                }
-                if (message.type === WebSocketResponseType.LEVEL2_UPDATE) {
-                    logInfo(JSON.stringify(message, null, 2))
-                }
-                logInfo('')
-            }
-        })
+
+        // synchronize book
+        this.syncBook(productId)
+
+        // log book each second
+        setInterval(() => {
+            logInfo(chalk.green(this.bids.max()) + ' ' + chalk.red(this.asks.min()))
+        }, 500)
     }
 
 
