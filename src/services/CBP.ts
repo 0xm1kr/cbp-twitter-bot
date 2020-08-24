@@ -217,7 +217,7 @@ export class CBPService {
         })
     }
 
-    // -------- CLI Methods -------- //
+    // -------- CLI Output Methods -------- //
 
     /**
      * list available accounts

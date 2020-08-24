@@ -33,7 +33,7 @@ export class TwitterService {
      * 
      * @param tweet 
      */
-    protected getSentiment(tweet: string): number {
+    public getSentiment(tweet: string): number {
         const result = this.sentiment.analyze(tweet)
         return (result.score / 10)
     }
@@ -45,14 +45,16 @@ export class TwitterService {
      * @param track 
      */
     public async stream(track: string, handler: (event: any) => void): Promise<void> {
-        await new Promise((res, rej) => {
+        await new Promise((res) => {
             const stream = this.client.stream('statuses/filter', { track })
             stream.on('data', handler)
             stream.on('error', (error) => {
-                rej(error)
+                res(error)
             })
         })
     }
+
+    // -------- CLI Output Methods -------- //
 
     /**
      * stream tweet sentiment

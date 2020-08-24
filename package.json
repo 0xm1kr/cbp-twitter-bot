@@ -38,6 +38,7 @@
     "coinbase-pro-node": "^2.8.1",
     "dotenv": "^8.2.0",
     "inquirer": "^7.3.3",
+    "moving-averages": "^4.0.5",
     "node-emoji": "^1.10.0",
     "sentiment": "^5.0.2",
     "tslib": "~2.0.0",
